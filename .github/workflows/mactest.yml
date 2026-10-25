@@ -1,0 +1,65 @@
+name: Scid vs PC macOS compaction test
+
+on:
+  workflow_dispatch:
+    inputs:
+      revs:
+        description: "SVN revisions (JSON list)"
+        default: '["3718", "3724"]'
+      patch:
+        description: "optional patch file in patches/ to apply (empty = none)"
+        default: ""
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-13]
+        rev: ${{ fromJSON(github.event.inputs.revs) }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Tcl/Tk 8.6 (Aqua) and Subversion
+        run: |
+          brew install tcl-tk@8 subversion
+          echo "TK=$(brew --prefix tcl-tk@8)" >> $GITHUB_ENV
+
+      - name: Get Scid vs PC r${{ matrix.rev }}
+        run: svn export -q -r ${{ matrix.rev }} https://svn.code.sf.net/p/scidvspc/code scid
+
+      - name: Apply patch
+        if: github.event.inputs.patch != ''
+        run: cd scid && patch -p1 < ../patches/${{ github.event.inputs.patch }}
+
+      - name: Build
+        run: |
+          cd scid
+          ./configure TCL_VERSION=8.6 \
+            TCL_INCLUDE="-I$TK/include/tcl-tk" \
+            TCL_LIBRARY="-L$TK/lib -ltcl8.6" \
+            TK_LIBRARY="-L$TK/lib -ltcl8.6 -ltk8.6"
+          make -j4 scid tkscid tcscid
+          echo 'puts "Tk [info patchlevel] [tk windowingsystem]"; exit' > /tmp/v.tcl
+          ./tkscid /tmp/v.tcl
+
+      - name: Test
+        run: |
+          ACTS="games both"; [ ${{ matrix.rev }} -lt 3720 ] && ACTS="games"
+          for dlg in tk native; do
+            for act in $ACTS; do
+              bash test/run.sh scid r${{ matrix.rev }}-${{ matrix.os }}-$act-$dlg $act $dlg
+            done
+          done
+          cat logs/summary.txt
+
+      - name: Upload logs and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-r${{ matrix.rev }}-${{ matrix.os }}
+          path: |
+            logs
+            shots
