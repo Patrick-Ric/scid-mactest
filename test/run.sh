@@ -7,7 +7,9 @@ export T_LOG=$PWD/logs/$T_NAME.log T_SHOTS=$PWD/shots
 mkdir -p logs shots db home
 rm -f "$T_LOG"
 for f in "$D"/bases/matein2.s*; do cp "$f" "db/$T_NAME.${f##*.}"; done
-"$D"/tcscid "$T"/mark.tcl db/$T_NAME > /dev/null
+# after "make mac_app" the tcscid in <scid-dir> looks for the frameworks inside the bundle
+TCSCID="$D"/tcscid; [ "$MODE" = app ] && TCSCID="$D/dist/ScidvsMac.app/Contents/MacOS/tcscid"
+"$TCSCID" "$T"/mark.tcl db/$T_NAME > /dev/null || echo "!! mark.tcl failed"
 # native dialogs: press Return every 3 s from outside (needs accessibility rights)
 if [ "$T_DLG" = native ]; then
   ( for i in $(seq 1 30); do sleep 3
