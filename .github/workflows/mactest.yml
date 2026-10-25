@@ -5,7 +5,10 @@ on:
     inputs:
       revs:
         description: "SVN revisions (JSON list)"
-        default: '["3718", "3724"]'
+        default: '["3724"]'
+      tks:
+        description: "Tcl/Tk versions to build (JSON list)"
+        default: '["8.6.16", "8.6.13", "8.6.10"]'
       patch:
         description: "optional patch file in patches/ to apply (empty = none)"
         default: ""
@@ -17,6 +20,7 @@ jobs:
       matrix:
         os: [macos-14, macos-15-intel]
         rev: ${{ fromJSON(github.event.inputs.revs) }}
+        tk: ${{ fromJSON(github.event.inputs.tks) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:
@@ -27,7 +31,7 @@ jobs:
           brew install subversion tcl-tk@8
           # only used as the tclsh 8.6 that "make install" needs for the html docs
           export NATIVE_TCLSH=$(brew --prefix tcl-tk@8)/bin/tclsh8.6
-          V=8.6.16
+          V=${{ matrix.tk }}
           curl -sSL -o tcl.tgz https://prdownloads.sourceforge.net/tcl/tcl$V-src.tar.gz
           curl -sSL -o tk.tgz https://prdownloads.sourceforge.net/tcl/tk$V-src.tar.gz
           mkdir tcltk && tar xzf tcl.tgz -C tcltk && tar xzf tk.tgz -C tcltk
@@ -57,21 +61,31 @@ jobs:
           echo 'puts "Tk [info patchlevel] [tk windowingsystem]"; exit' > /tmp/v.tcl
           ./tkscid /tmp/v.tcl
 
-      - name: Test
+      - name: Test (started from the terminal)
         run: |
           ACTS="games both"; [ ${{ matrix.rev }} -lt 3720 ] && ACTS="games"
-          for dlg in tk native; do
-            for act in $ACTS; do
-              bash test/run.sh scid r${{ matrix.rev }}-${{ matrix.os }}-$act-$dlg $act $dlg
-            done
-          done
+          N=r${{ matrix.rev }}-tk${{ matrix.tk }}-${{ matrix.os }}
+          for dlg in tk native; do for act in $ACTS; do
+            bash test/run.sh scid $N-term-$act-$dlg $act $dlg term
+          done; done
+
+      - name: Build ScidvsMac.app with embedded frameworks
+        run: bash test/mkapp.sh scid
+
+      - name: Test (ScidvsMac.app started with open)
+        run: |
+          ACTS="games both"; [ ${{ matrix.rev }} -lt 3720 ] && ACTS="games"
+          N=r${{ matrix.rev }}-tk${{ matrix.tk }}-${{ matrix.os }}
+          for dlg in tk native; do for act in $ACTS; do
+            bash test/run.sh scid $N-app-$act-$dlg $act $dlg app
+          done; done
           cat logs/summary.txt
 
       - name: Upload logs and screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: result-r${{ matrix.rev }}-${{ matrix.os }}
+          name: result-r${{ matrix.rev }}-tk${{ matrix.tk }}-${{ matrix.os }}
           path: |
             logs
             shots

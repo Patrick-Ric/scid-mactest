@@ -4,6 +4,10 @@
 # Logs every stage with a timestamp; "T: DONE" at the end. A missing DONE means a hang.
 
 set ::t_t0 [clock milliseconds]
+# started from an app bundle via "open": settings come from a file
+if {![info exists ::env(T_ACTION)] && [file exists /tmp/scid-test-env.tcl]} {
+  source /tmp/scid-test-env.tcl
+}
 proc bgerror {msg} { t_log "ERROR: $msg" }
 set ::t_shot 0
 proc t_log {msg} {
