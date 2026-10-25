@@ -1,0 +1,20 @@
+--- a/tcl/file/maint.tcl
++++ b/tcl/file/maint.tcl
+@@ -1713,7 +1713,7 @@
+     ::game::Save
+   }
+ 
+-  progressWindow Scid $::tr(CompactNames) $parent
++  progressWindow Scid $::tr(CompactNames) {}
+ 
+   busyCursor .
+   set err [catch {sc_compact names} result]
+@@ -1771,7 +1771,7 @@
+     return 0
+   }
+ 
+-  progressWindow Scid $::tr(CompactGames) $::tr(Cancel) sc_progressBar $parent
++  progressWindow Scid $::tr(CompactGames) $::tr(Cancel) sc_progressBar {}
+   busyCursor .
+   set err [catch {sc_compact games} result]
+   unbusyCursor .
