@@ -50,8 +50,10 @@ jobs:
         run: |
           cd scid
           F=/Library/Frameworks
-          ./configure TCL_INCLUDE="-I$F/Tcl.framework/Headers -I$F/Tk.framework/Headers"
+          ./configure TCL_INCLUDE="-I$F/Tcl.framework/Headers -I$F/Tk.framework/Headers" \
+            TCL_LIBRARY="-F$F -framework Tcl" TK_LIBRARY="-F$F -framework Tcl -framework Tk"
           make -j4 scid tkscid tcscid
+          otool -L tkscid tcscid
           echo 'puts "Tk [info patchlevel] [tk windowingsystem]"; exit' > /tmp/v.tcl
           ./tkscid /tmp/v.tcl
 
