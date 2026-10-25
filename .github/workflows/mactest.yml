@@ -49,7 +49,8 @@ jobs:
       - name: Build
         run: |
           cd scid
-          ./configure
+          F=/Library/Frameworks
+          ./configure TCL_INCLUDE="-I$F/Tcl.framework/Headers -I$F/Tk.framework/Headers"
           make -j4 scid tkscid tcscid
           echo 'puts "Tk [info patchlevel] [tk windowingsystem]"; exit' > /tmp/v.tcl
           ./tkscid /tmp/v.tcl
