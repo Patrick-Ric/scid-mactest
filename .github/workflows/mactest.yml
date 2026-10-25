@@ -24,7 +24,9 @@ jobs:
 
       - name: Build Tcl/Tk 8.6 frameworks (Aqua), install Subversion
         run: |
-          brew install subversion
+          brew install subversion tcl-tk@8
+          # only used as the tclsh 8.6 that "make install" needs for the html docs
+          export NATIVE_TCLSH=$(brew --prefix tcl-tk@8)/bin/tclsh8.6
           V=8.6.16
           curl -sSL -o tcl.tgz https://prdownloads.sourceforge.net/tcl/tcl$V-src.tar.gz
           curl -sSL -o tk.tgz https://prdownloads.sourceforge.net/tcl/tk$V-src.tar.gz
@@ -32,9 +34,9 @@ jobs:
           cd tcltk
           mv tcl$V tcl8.6 && mv tk$V tk8.6
           make -C tcl8.6/macosx -j4 > ../tcl-build.log 2>&1 || (tail -40 ../tcl-build.log; exit 1)
-          sudo make -C tcl8.6/macosx install > ../tcl-install.log 2>&1 || (tail -40 ../tcl-install.log; exit 1)
+          sudo make -C tcl8.6/macosx install NATIVE_TCLSH=$NATIVE_TCLSH > ../tcl-install.log 2>&1 || (tail -40 ../tcl-install.log; exit 1)
           make -C tk8.6/macosx -j4 > ../tk-build.log 2>&1 || (tail -40 ../tk-build.log; exit 1)
-          sudo make -C tk8.6/macosx install > ../tk-install.log 2>&1 || (tail -40 ../tk-install.log; exit 1)
+          sudo make -C tk8.6/macosx install NATIVE_TCLSH=$NATIVE_TCLSH > ../tk-install.log 2>&1 || (tail -40 ../tk-install.log; exit 1)
           ls /Library/Frameworks
 
       - name: Get Scid vs PC r${{ matrix.rev }}
