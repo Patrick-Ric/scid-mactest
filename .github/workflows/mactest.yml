@@ -15,17 +15,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-13]
+        os: [macos-14, macos-15-intel]
         rev: ${{ fromJSON(github.event.inputs.revs) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Tcl/Tk 8.6 (Aqua) and Subversion
+      - name: Build Tcl/Tk 8.6 frameworks (Aqua), install Subversion
         run: |
-          brew install tcl-tk@8 subversion
-          echo "TK=$(brew --prefix tcl-tk@8)" >> $GITHUB_ENV
+          brew install subversion
+          V=8.6.16
+          curl -sSL -o tcl.tgz https://prdownloads.sourceforge.net/tcl/tcl$V-src.tar.gz
+          curl -sSL -o tk.tgz https://prdownloads.sourceforge.net/tcl/tk$V-src.tar.gz
+          mkdir tcltk && tar xzf tcl.tgz -C tcltk && tar xzf tk.tgz -C tcltk
+          cd tcltk
+          mv tcl$V tcl8.6 && mv tk$V tk8.6
+          make -C tcl8.6/macosx -j4 > ../tcl-build.log 2>&1 || (tail -40 ../tcl-build.log; exit 1)
+          sudo make -C tcl8.6/macosx install > ../tcl-install.log 2>&1 || (tail -40 ../tcl-install.log; exit 1)
+          make -C tk8.6/macosx -j4 > ../tk-build.log 2>&1 || (tail -40 ../tk-build.log; exit 1)
+          sudo make -C tk8.6/macosx install > ../tk-install.log 2>&1 || (tail -40 ../tk-install.log; exit 1)
+          ls /Library/Frameworks
 
       - name: Get Scid vs PC r${{ matrix.rev }}
         run: svn export -q -r ${{ matrix.rev }} https://svn.code.sf.net/p/scidvspc/code scid
@@ -37,10 +47,7 @@ jobs:
       - name: Build
         run: |
           cd scid
-          ./configure TCL_VERSION=8.6 \
-            TCL_INCLUDE="-I$TK/include/tcl-tk" \
-            TCL_LIBRARY="-L$TK/lib -ltcl8.6" \
-            TK_LIBRARY="-L$TK/lib -ltcl8.6 -ltk8.6"
+          ./configure
           make -j4 scid tkscid tcscid
           echo 'puts "Tk [info patchlevel] [tk windowingsystem]"; exit' > /tmp/v.tcl
           ./tkscid /tmp/v.tcl
